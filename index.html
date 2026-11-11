@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工厂具身智能体 · 车间3D仿真模拟器 | 源代码站</title>
+<style>
+:root{
+  --gold:#c9a86a; --gold2:#e6cf9f; --ink:#2b2620; --paper:#faf6ee;
+  --card:#ffffff; --muted:#8a7f6e; --line:#e8dfcf;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
+header{background:linear-gradient(135deg,#3a3226 0%,#5c4d33 55%,#8a6f42 100%);color:#fff;padding:22px 5% 18px}
+header h1{font-size:22px;letter-spacing:1px;font-weight:600}
+header p{font-size:13px;opacity:.85;margin-top:6px}
+.badge{display:inline-block;background:rgba(230,207,159,.25);border:1px solid var(--gold2);color:var(--gold2);font-size:12px;padding:2px 10px;border-radius:99px;margin-left:10px;vertical-align:middle}
+nav{display:flex;gap:0;background:var(--card);border-bottom:2px solid var(--line);padding:0 5%}
+nav button{border:none;background:none;padding:14px 26px;font-size:15px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:500}
+nav button.on{color:var(--ink);border-bottom-color:var(--gold);font-weight:700}
+main{flex:1;display:flex;flex-direction:column}
+.view{display:none;flex:1;flex-direction:column}
+.view.on{display:flex}
+/* 在线体验 */
+#view-sim{padding:0}
+#view-sim iframe{width:100%;height:100%;min-height:72vh;border:none;flex:1}
+.sim-tip{font-size:12px;color:var(--muted);padding:8px 5%;background:#fff8ea;border-top:1px solid var(--line)}
+/* 源代码 */
+#view-code{flex-direction:row;min-height:70vh}
+.sidebar{width:250px;background:var(--card);border-right:1px solid var(--line);padding:16px 0;flex-shrink:0}
+.sidebar h3{font-size:12px;color:var(--muted);padding:0 18px 8px;letter-spacing:1px}
+.sidebar a{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--ink);text-decoration:none;font-size:14px;cursor:pointer;border-left:3px solid transparent}
+.sidebar a.on{background:#f6efe0;border-left-color:var(--gold);font-weight:700}
+.sidebar a .size{margin-left:auto;font-size:11px;color:var(--muted)}
+.sidebar .dl{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.sidebar .dl a{color:#a4762c;font-size:13px}
+.codebox{flex:1;background:#1e1a14;color:#e8dfcf;overflow:auto;font-family:"SF Mono",Consolas,Menlo,monospace;font-size:13px;line-height:1.6}
+.codebox .bar{position:sticky;top:0;background:#2b251c;padding:10px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #3d3527}
+.codebox .bar span{font-size:13px;color:var(--gold2)}
+.codebox .bar button{background:var(--gold);border:none;color:#fff;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px}
+.codebox pre{padding:16px 18px;white-space:pre;min-width:max-content}
+.ln{display:inline-block;width:46px;color:#6b5f4b;text-align:right;margin-right:16px;user-select:none}
+.kw{color:#f0b45c}.st{color:#a8d08d}.cm{color:#7d9a6e;font-style:italic}.nu{color:#e8927c}
+/* 说明 */
+#view-doc{padding:28px 6%;max-width:900px}
+#view-doc h2{font-size:18px;margin:22px 0 10px;padding-left:12px;border-left:4px solid var(--gold)}
+#view-doc p,#view-doc li{font-size:14px;line-height:1.9;color:#4a4235}
+#view-doc ul{padding-left:22px}
+#view-doc table{width:100%;border-collapse:collapse;margin:10px 0;background:#fff;font-size:13px}
+#view-doc th,#view-doc td{border:1px solid var(--line);padding:8px 12px;text-align:left}
+#view-doc th{background:#f6efe0}
+footer{text-align:center;font-size:12px;color:var(--muted);padding:14px;border-top:1px solid var(--line)}
+@media(max-width:720px){
+  #view-code{flex-direction:column}
+  .sidebar{width:100%;display:flex;flex-wrap:wrap;padding:8px;border-right:none;border-bottom:1px solid var(--line)}
+  .sidebar h3{display:none}
+  .sidebar a{padding:8px 12px;font-size:13px;border-left:none;border:1px solid var(--line);border-radius:6px;margin:4px}
+  .sidebar a.on{border-color:var(--gold)}
+  .sidebar .dl{border-top:none;padding-top:0;margin-top:0;width:100%}
+  header h1{font-size:17px}
+  nav button{padding:12px 14px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>工厂具身智能体 · 车间 3D 实时仿真模拟器<span class="badge">6G-A 通感一体 / RIS 智能表面</span></h1>
+  <p>数字孪生双环工作流（慢环 1Hz + 快环 20Hz）｜参数实时可调｜完整源代码开放</p>
+</header>
+<nav>
+  <button class="on" data-v="sim">🏭 在线体验</button>
+  <button data-v="code">📂 源代码</button>
+  <button data-v="doc">📖 功能说明</button>
+</nav>
+<main>
+  <div class="view on" id="view-sim">
+    <iframe src="sim.html" loading="lazy"></iframe>
+    <div class="sim-tip">💡 提示：右侧面板拖动滑块 / 点开关实时生效；3D 场景可拖拽旋转、滚轮缩放；左上角可切换「基线 / 6G 联合优化」对比。</div>
+  </div>
+  <div class="view" id="view-code">
+    <div class="sidebar">
+      <h3>源代码文件</h3>
+      <a data-f="js/app.js" class="on">app.js <span class="size">43 KB</span></a>
+      <a data-f="index.html">index.html <span class="size">15 KB</span></a>
+      <a data-f="README.md">README.md <span class="size">2 KB</span></a>
+      <a data-f="js/OrbitControls.js">OrbitControls.js <span class="size">26 KB</span></a>
+      <a data-f="js/three.min.js">three.min.js <span class="size">601 KB</span></a>
+      <div class="dl">
+        <a href="source/js/app.js" download>⬇ 下载 app.js</a>
+        <a href="source/index.html" download>⬇ 下载 index.html</a>
+        <a href="sim.html" download>⬇ 下载单文件完整版</a>
+      </div>
+    </div>
+    <div class="codebox">
+      <div class="bar"><span id="cf">js/app.js</span><button onclick="copyCode()">复制代码</button></div>
+      <pre id="code"></pre>
+    </div>
+  </div>
+  <div class="view" id="view-doc">
+    <h2>这是什么</h2>
+    <p>本站是「工厂具身智能体 6G 方案」配套的车间 3D 实时仿真模拟器：按方案文档场景要求建模（AGV、无人叉车、协作机械臂、纸箱、金属堆垛架、集装箱，全部标注材质反射系数 ρ），可实时调参观察 KPI 变化，并演示 RIS 智能表面多板协同波束赋形的补盲过程。</p>
+    <h2>核心功能</h2>
+    <ul>
+      <li><b>3D 场景</b>：Three.js 渲染，拖拽旋转 / 缩放，AGV 与叉车实时运动，波束线可视化</li>
+      <li><b>右侧控制面板</b>：AGV 数量、速度、叉车数、金属遮挡深度、RIS 面板数、基站节点、遮挡预测窗口、通感一体、算力切分策略、RIS 阵列开关矩阵</li>
+      <li><b>底部 KPI</b>：中断率 / 时延 P95 / 遥感占空比 / 吞吐率 / 任务成功率 / 定位误差，均带基线对比（基线：中断 3.41 次/h、吞吐 38Mbps → 优化后 0.03 次/h、211Mbps）</li>
+      <li><b>顶部五步管线</b>：建图 → 传播计算 → 遮挡预测 → 相位决策 → 执行补盲</li>
+    </ul>
+    <h2>源代码结构</h2>
+    <table>
+      <tr><th>文件</th><th>作用</th></tr>
+      <tr><td>index.html</td><td>页面骨架 + 全部样式（入口，双击即用）</td></tr>
+      <tr><td>js/app.js</td><td>★ 核心业务逻辑（场景建模 / 仿真 / KPI / 波束可视化）</td></tr>
+      <tr><td>js/three.min.js</td><td>Three.js r134 渲染引擎（第三方库）</td></tr>
+      <tr><td>js/OrbitControls.js</td><td>3D 视角控制（第三方库）</td></tr>
+    </table>
+    <h2>本地运行</h2>
+    <p>方式一：双击 <code>index.html</code> 直接用浏览器打开。<br>
+    方式二（更稳定）：<code>cd 3D工厂模拟器源代码 && python3 -m http.server 8000</code>，访问 <code>http://localhost:8000</code>。</p>
+  </div>
+</main>
+<footer>工厂具身智能体 6G 方案 · 车间仿真模拟器 · 源代码与本站均可自由保存使用</footer>
+<script>
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const RE=/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")|(&lt;\/?script[^&]*&gt;)|\b(const|let|var|function|return|if|else|for|while|new|class|this|import|export|true|false|null|of|in|break|continue|switch|case|default|typeof|instanceof)\b|(\b\d+\.?\d*\b)/g;
+function hl(t){
+  return t.replace(RE,(m,cm,st,sc,kw,nu)=>{
+    if(cm)return '<span class="cm">'+m+'</span>';
+    if(st)return '<span class="st">'+m+'</span>';
+    if(sc)return '<span class="kw">'+m+'</span>';
+    if(kw)return '<span class="kw">'+m+'</span>';
+    if(nu)return '<span class="nu">'+m+'</span>';
+    return m;
+  });
+}
+let cur='',cache={};
+async function load(f){
+  document.querySelectorAll('.sidebar a[data-f]').forEach(a=>a.classList.toggle('on',a.dataset.f===f));
+  document.getElementById('cf').textContent=f;
+  if(cache[f]){render(cache[f]);return}
+  const r=await fetch('source/'+f);
+  const t=await r.text();
+  cache[f]=t;render(t);
+}
+function render(t){
+  const lines=esc(t).split('\n');
+  document.getElementById('code').innerHTML=lines.map((l,i)=>'<span class="ln">'+(i+1)+'</span>'+hl(l)).join('\n');
+}
+function copyCode(){navigator.clipboard.writeText(cur||cache[document.getElementById('cf').textContent]||'').then(()=>{const b=document.querySelector('.codebox .bar button');b.textContent='✓ 已复制';setTimeout(()=>b.textContent='复制代码',1500)})}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.getElementById('view-'+b.dataset.v).classList.add('on');
+});
+document.querySelectorAll('.sidebar a[data-f]').forEach(a=>a.onclick=()=>load(a.dataset.f));
+load('js/app.js');
+</script>
+</body>
+</html>
