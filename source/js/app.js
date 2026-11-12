@@ -237,7 +237,7 @@ const DOC={
   blind:{base:8.0, opt:1.9,  target:2,   unit:'%',    d:1, note:'单站盲区面积占比 8%—15%'},
   pos  :{base:42,  opt:7.8,  target:10,  unit:'cm',   d:1, note:'非视距场景'},
   tops :{base:40,  opt:500,  target:500, unit:'TOPS', d:0, note:'单机可用等效算力 20—40→≥500'},
-  bom  :{base:100, opt:61,   target:60,  unit:'%',    d:0, note:'相对全端侧部署，1.8万→1.1万'},
+  bom  :{base:100, opt:60,   target:60,  unit:'%',    d:0, note:'相对全端侧部署（1.8万→1.1万，−39%）'},
   recfg:{base:240, opt:10,   target:10,  unit:'min',  d:0, note:'换线 4 小时→10 分钟'},
   ul   :{base:60,  opt:300,  target:300, unit:'Mbps', d:0, note:'单机上行 60—100→≥300'},
   thr  :{base:38,  opt:210,  unit:'Mbps', d:0, note:'遮挡区平均吞吐 5.5 倍'},
@@ -256,7 +256,8 @@ function optDeg(){
 }
 const mix=(k,lift)=>DOC[k].base+(DOC[k].opt-DOC[k].base)*Math.max(0,Math.min(1,lift));
 
-function computeKPI(instant){
+function computeKPI(instant,dt){
+  dt=dt||1/60;
   const {risF,predF,senseF,sliceF,q}=optDeg();
   const blind =mix('blind',risF);
   const lat   =mix('lat',q);
@@ -281,7 +282,7 @@ function computeKPI(instant){
     set('gain',gain); set('succ',succ); set('tops',tops); set('online',online);
     return;
   }
-  const k=0.10;
+  const k=1-Math.exp(-dt/0.35);
   ['blind','lat','ints','pos','thr','ul','bom','recfg','gain','succ'].forEach(n=>{
     const target=n==='blind'?blind:n==='lat'?lat:n==='ints'?ints:n==='pos'?pos:
                  n==='thr'?thr:n==='ul'?ul:n==='bom'?bom:n==='recfg'?recfg:
@@ -783,7 +784,7 @@ function update(dt){
     p.eg=RIS_MAXG*(1-Math.min(tg.d,RIS_MAXD)/RIS_MAXD);
   });
 
-  computeKPI();
+  computeKPI(false,dt);
   renderKPI();
   const now=performance.now();
   if(now-lastRisSync>400){ lastRisSync=now; syncRisCard(); }
@@ -1042,14 +1043,26 @@ document.getElementById('kpis').innerHTML=KPI_DEF.map(x=>`
     <div class="c" id="c-${x.k}">&nbsp;</div>
   </div>`).join('');
 
+/* 是否处于方案态：四项措施全开（RIS 12 块 + 预测 + 通感 + 动态三级） */
+function isScheme(){
+  return !!(STATE.risOn && STATE.ris>=12 && STATE.predOn && STATE.predWin>=300
+            && STATE.sensing && STATE.slicing==='dynamic');
+}
+
 function renderKPI(){
+  const scheme=isScheme();
   KPI_DEF.forEach(x=>{
     const el=document.getElementById('k-'+x.k);
     if(!el) return;
     const v=KPI[x.k];
     el.textContent=v.toFixed(x.d);
-    const ok = x.dir==='≤' ? v<=x.target*1.0001 : v>=x.target*0.9999;
     const c=document.getElementById('c-'+x.k);
+    if(!scheme){
+      c.innerHTML='基线 '+x.base+' · <span style="color:#8C8474">对照态</span>';
+      return;
+    }
+    const vr=parseFloat(v.toFixed(x.d));            // 按屏显值判定，避免浮点残差
+    const ok = x.dir==='≤' ? vr<=x.target : vr>=x.target;
     c.innerHTML='基线 '+x.base+' · 目标 '+x.dir+' '+x.target
       +' <b class="'+(ok?'ok':'bad')+'">'+(ok?'达标':'未达')+'</b>';
   });
@@ -1202,6 +1215,7 @@ resize();
   Object.assign(STATE,save);
   rebuildDynMask(); heatDirty=true; heatAt=0;
   syncUI();
+  computeKPI(true); renderKPI();   // 首帧直接给出方案稳态值
 })();
 window.__DBG={scene,AGVS,FORKLIFTS,risVis};
 pushLog('3D 仿真已启动 · 拖动旋转视角 · 拖动右侧参数观察实时变化',false);
