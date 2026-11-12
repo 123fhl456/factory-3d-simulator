@@ -3,150 +3,173 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>工厂具身智能体 · 车间实时仿真 3D</title>
+<title>工厂具身智能体 · 6G 算网协同车间仿真</title>
 <style>
-  :root{--ivory:#F2EEDF;--ink:#2B2620;--ink2:#5A5348;--ink3:#8A7B60;--gold:#A8853F;--gold-d:#8F6E2E;--line:#D8CDB2;--red:#B03A2E;--green:#4E7A5E}
+  :root{--ivory:#F2EEDF;--ink:#2B2620;--ink2:#5A5348;--ink3:#8A7B60;--gold:#A8853F;--gold-d:#8F6E2E;
+        --line:#D8CDB2;--red:#B03A2E;--green:#4E7A5E}
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
-  body{background:var(--ivory);color:var(--ink);
-       font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
-  #app{display:flex;flex-direction:column;height:100vh;padding:12px 16px 10px;gap:10px}
-  #topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;flex:0 0 auto}
-  .brand{display:flex;align-items:center;gap:12px}
-  .mark{width:30px;height:30px;border:1.5px solid var(--gold);border-radius:8px;display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:5px}
+  body{background:var(--ivory);color:var(--ink);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100vh;padding:11px 14px 9px;gap:9px}
+
+  /* ---------- 顶栏 ---------- */
+  #topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex:0 0 auto}
+  .brand{display:flex;align-items:center;gap:11px;min-width:0}
+  .mark{width:30px;height:30px;border:1.5px solid var(--gold);border-radius:8px;display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:5px;flex:0 0 auto}
   .mark i{background:var(--gold);border-radius:2px;opacity:.85}
   .mark i:nth-child(2){opacity:.45}.mark i:nth-child(4){opacity:.6}
-  .brand h1{font-size:16px;font-weight:700;letter-spacing:.5px}
-  .brand p{font-size:10.5px;color:var(--ink3);margin-top:2px}
-  .presets{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.45)}
-  .presets button{border:0;background:none;padding:8px 16px;font-size:12.5px;color:var(--ink2);cursor:pointer;font-family:inherit}
+  .brand h1{font-size:15.5px;font-weight:700;letter-spacing:.4px;white-space:nowrap}
+  .brand p{font-size:10px;color:var(--ink3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .presets{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.45);flex:0 0 auto}
+  .presets button{border:0;background:none;padding:8px 15px;font-size:12.5px;color:var(--ink2);cursor:pointer;font-family:inherit;white-space:nowrap}
   .presets button.active{background:var(--gold);color:#FBF7EA;font-weight:600}
-  .controls{display:flex;gap:7px}
-  .btn{border:1px solid var(--line);background:rgba(255,255,255,.6);border-radius:8px;
-       padding:8px 13px;font-size:12.5px;color:var(--ink2);cursor:pointer;font-family:inherit;white-space:nowrap}
+  .controls{display:flex;gap:6px;flex:0 0 auto}
+  .btn{border:1px solid var(--line);background:rgba(255,255,255,.6);border-radius:8px;padding:8px 12px;
+       font-size:12.5px;color:var(--ink2);cursor:pointer;font-family:inherit;white-space:nowrap}
   .btn:hover{border-color:var(--gold);color:var(--gold-d)}
   .btn.primary{background:var(--ink);color:#F2EEDF;border-color:var(--ink)}
   .btn.warnOn{border-color:var(--red);color:var(--red);background:rgba(176,58,46,.07)}
-  main{flex:1 1 auto;display:flex;gap:10px;min-height:0}
+
+  /* ---------- 主区 ---------- */
+  main{flex:1 1 auto;display:flex;gap:9px;min-height:0}
   #stage{flex:1 1 auto;position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#FAF7EC;min-width:0}
   #cv{display:block;width:100%;height:100%}
-  #panel{flex:0 0 276px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:2px}
-  .card{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .cardhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
-  .cardhead span{font-size:12px;font-weight:700;color:var(--ink);letter-spacing:1px}
-  .cardhead em{font-size:10px;font-style:normal;color:var(--ink3)}
-  .row{margin-bottom:10px}
+  #panel{flex:0 0 268px;display:flex;flex-direction:column;gap:7px;overflow-y:auto;padding-right:2px}
+  #panel::-webkit-scrollbar{width:5px}
+  #panel::-webkit-scrollbar-thumb{background:#D8CDB2;border-radius:3px}
+  .card{background:rgba(255,255,255,.62);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .cardhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .cardhead span{font-size:11.5px;font-weight:700;color:var(--ink);letter-spacing:.8px}
+  .cardhead em{font-size:9.5px;font-style:normal;color:var(--ink3)}
+  .row{margin-bottom:9px}
   .row:last-child{margin-bottom:0}
-  .rowhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
-  .lab{font-size:11.5px;color:var(--ink2)}
-  .val{font-size:11px;color:var(--ink3)}
-  .val b{color:var(--gold-d);font-size:13px;font-variant-numeric:tabular-nums}
-  input[type=range]{width:100%;height:18px;-webkit-appearance:none;background:none;cursor:pointer}
+  .rowhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .lab{font-size:11px;color:var(--ink2)}
+  .val{font-size:10px;color:var(--ink3)}
+  .val b{color:var(--gold-d);font-size:12.5px;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;height:16px;-webkit-appearance:none;background:none;cursor:pointer}
   input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line);border-radius:2px}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;
-    background:var(--gold);border:2px solid #FBF7EA;box-shadow:0 1px 3px rgba(43,38,32,.25);margin-top:-5px}
-  .switch{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+    background:var(--gold);border:2px solid #FBF7EA;box-shadow:0 1px 3px rgba(43,38,32,.25);margin-top:-4.5px}
+  .switch{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
   .switch:last-child{margin-bottom:0}
-  .sw{width:34px;height:19px;border-radius:10px;border:1px solid var(--line);background:#E8E2D2;position:relative;cursor:pointer;transition:.2s}
-  .sw i{position:absolute;left:2px;top:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+  .sw{width:32px;height:18px;border-radius:9px;border:1px solid var(--line);background:#E8E2D2;position:relative;cursor:pointer;transition:.2s}
+  .sw i{position:absolute;left:2px;top:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.15)}
   .sw.on{background:var(--gold);border-color:var(--gold)}
-  .sw.on i{left:17px}
+  .sw.on i{left:16px}
   .seg{display:flex;gap:4px}
   .seg button{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.6);border-radius:6px;
-    padding:5px 0;font-size:11px;color:var(--ink2);cursor:pointer;font-family:inherit}
+    padding:5px 0;font-size:10.5px;color:var(--ink2);cursor:pointer;font-family:inherit}
   .seg button.on{background:var(--gold);border-color:var(--gold);color:#FBF7EA;font-weight:600}
-  .risgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:9px}
+  .segnote{font-size:9.5px;color:var(--ink3);margin-top:6px;line-height:1.5}
+  .segval{font-size:10.5px;color:var(--ink2);margin-top:5px}
+  .segval b{color:var(--gold-d);font-size:13px;font-variant-numeric:tabular-nums}
+  .risgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-bottom:8px}
   .riscell{aspect-ratio:1;border:1px solid var(--line);border-radius:3px;background:#E8D8B6;cursor:pointer;transition:.15s}
   .riscell.off{background:#C9C2B2;position:relative;opacity:.55}
-  .riscell.off::after{content:'×';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:10px;font-weight:700}
-  .ristat{display:flex;justify-content:space-between;font-size:11px;color:var(--ink2);margin-bottom:8px}
+  .riscell.off::after{content:'×';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--red);font-size:9px;font-weight:700}
+  .ristat{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink2);margin-bottom:6px}
   .ristat b{color:var(--gold-d);font-variant-numeric:tabular-nums}
-  .rishint{font-size:10px;color:var(--ink3);line-height:1.55}
-  .matline{display:flex;align-items:center;gap:7px;padding:3.5px 0;font-size:11px}
-  .matsw{width:11px;height:11px;border-radius:3px;border:1px solid;flex:0 0 auto}
+  .rishint{font-size:9.5px;color:var(--ink3);line-height:1.5}
+  .matline{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:10.5px}
+  .matsw{width:10px;height:10px;border-radius:3px;border:1px solid;flex:0 0 auto}
   .matname{color:var(--ink2);flex:1}
-  .matrho{font-variant-numeric:tabular-nums;color:var(--gold-d);font-weight:600;font-size:11px}
-  #kpis{flex:0 0 auto;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-  .kpi{background:rgba(255,255,255,.55);border:1px solid var(--line);border-radius:9px;padding:8px 11px 7px;position:relative;overflow:hidden}
-  .kpi .k{font-size:10px;color:var(--ink3);letter-spacing:.5px}
-  .kpi .n{font-size:19px;font-weight:700;color:var(--gold-d);margin-top:2px;font-variant-numeric:tabular-nums;line-height:1.15}
-  .kpi .n small{font-size:10px;font-weight:400;color:var(--ink3);margin-left:2px}
-  .kpi .c{font-size:9.5px;margin-top:3px;color:var(--ink3);letter-spacing:.2px}
-  .kpi .c b{font-weight:600}
-  .up{color:var(--red)}.down{color:var(--green)}
+  .matrho{font-variant-numeric:tabular-nums;color:var(--gold-d);font-weight:600;font-size:10px}
 
-  #log{position:absolute;right:10px;bottom:10px;width:268px;display:flex;flex-direction:column;gap:3px;pointer-events:none;z-index:5}
-  .lg{background:rgba(43,38,32,.82);color:#EDE4D1;font-size:10px;padding:4px 8px;border-radius:4px;
-      backdrop-filter:blur(3px);animation:lgin .3s forwards;line-height:1.3}
+  /* ---------- 底部 KPI ---------- */
+  #kpis{flex:0 0 auto;display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .kpi{background:rgba(255,255,255,.55);border:1px solid var(--line);border-radius:9px;padding:7px 9px 6px;position:relative;overflow:hidden}
+  .kpi .k{font-size:9.5px;color:var(--ink3);letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi .n{font-size:17px;font-weight:700;color:var(--gold-d);margin-top:1px;font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap}
+  .kpi .n small{font-size:9px;font-weight:400;color:var(--ink3);margin-left:1px}
+  .kpi .c{font-size:8.5px;margin-top:2px;color:var(--ink3);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi .c b{font-weight:600}
+  .ok{color:var(--green)}
+  .bad{color:var(--red)}
+
+  /* ---------- 场景浮层 ---------- */
+  #log{position:absolute;right:9px;bottom:9px;width:262px;display:flex;flex-direction:column;gap:3px;pointer-events:none;z-index:5}
+  .lg{background:rgba(43,38,32,.82);color:#EDE4D1;font-size:9.5px;padding:4px 7px;border-radius:4px;
+      backdrop-filter:blur(3px);animation:lgin .3s forwards;line-height:1.35}
   .lg b{color:#D9BE84;font-weight:600}
   .lg.warn{background:rgba(176,58,46,.88)}
   @keyframes lgin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-  /* 五步智能管线 overlay */
-  #pipe{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:4;
-        background:rgba(255,253,245,.88);border:1px solid rgba(192,164,105,.5);border-radius:9px;
-        padding:8px 12px 7px;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(43,38,32,.06);max-width:min(760px,92%)}
-  #pipe .ptitle{font-size:9.5px;color:var(--ink3);letter-spacing:2px;text-align:center;margin-bottom:6px}
+  #pipe{position:absolute;top:9px;left:50%;transform:translateX(-50%);z-index:4;
+        background:rgba(255,253,245,.9);border:1px solid rgba(192,164,105,.5);border-radius:9px;
+        padding:7px 11px 6px;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(43,38,32,.06);max-width:min(780px,94%)}
+  #pipe .ptitle{font-size:9px;color:var(--ink3);letter-spacing:1.6px;text-align:center;margin-bottom:5px}
   .psteps{display:flex;gap:4px}
-  .pstep{flex:1;border:1px solid var(--line);border-radius:6px;padding:4px 7px 3px;background:rgba(255,255,255,.5);transition:.25s;min-width:0}
-  .pstep b{display:block;font-size:10.5px;color:var(--ink2);white-space:nowrap}
-  .pstep span{display:block;font-size:8.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pstep{flex:1;border:1px solid var(--line);border-radius:6px;padding:3.5px 6px 2.5px;background:rgba(255,255,255,.5);transition:.25s;min-width:0}
+  .pstep b{display:block;font-size:10px;color:var(--ink2);white-space:nowrap}
+  .pstep span{display:block;font-size:8px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pstep.on{border-color:var(--gold);background:#F5E8CB;box-shadow:0 0 0 1px var(--gold) inset}
   .pstep.on b{color:var(--gold-d)}
-  .pcyc{margin-top:6px;position:relative;height:12px;border-radius:6px;background:#E8E2D2;overflow:hidden}
-  #pbar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(168,133,63,.25),rgba(168,133,63,.85));border-radius:6px;width:0}
-  #pbar::after{content:'';position:absolute;right:0;top:-2px;width:2px;height:16px;background:var(--gold-d)}
-  .pmarks{display:flex;justify-content:space-between;font-size:8.5px;color:var(--ink3);margin-top:3px}
+  .pcyc{margin-top:5px;position:relative;height:10px;border-radius:5px;background:#E8E2D2;overflow:hidden}
+  #pbar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(168,133,63,.25),rgba(168,133,63,.85));border-radius:5px;width:0}
+  #pbar::after{content:'';position:absolute;right:0;top:-2px;width:2px;height:14px;background:var(--gold-d)}
+  .pmarks{display:flex;justify-content:space-between;font-size:8px;color:var(--ink3);margin-top:2px}
   .pmarks i{font-style:normal}
-  @keyframes fast{0%,49%{opacity:1}50%,100%{opacity:.25}}
-  .pmarks .fast{animation:fast .5s steps(1) infinite;color:var(--gold-d);font-weight:600}
 
-  #legend{position:absolute;left:10px;bottom:10px;z-index:4;display:flex;gap:12px;align-items:center;
-    background:rgba(255,253,245,.85);border:1px solid rgba(192,164,105,.4);border-radius:7px;padding:5px 10px;font-size:10px;color:var(--ink2);flex-wrap:wrap;max-width:40%}
-  #legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:-1px}
-  #risBadge{position:absolute;left:10px;bottom:44px;font-size:10.5px;color:#7A6330;z-index:4;
-    background:rgba(255,253,245,.9);border:1px solid rgba(192,164,105,.5);
-    padding:4px 10px;border-radius:5px;letter-spacing:.3px;pointer-events:none;
-    box-shadow:0 1px 4px rgba(43,38,32,.05)}
+  #legend{position:absolute;left:9px;bottom:9px;z-index:4;display:flex;gap:10px;align-items:center;
+    background:rgba(255,253,245,.86);border:1px solid rgba(192,164,105,.4);border-radius:7px;padding:4px 9px;
+    font-size:9.5px;color:var(--ink2);flex-wrap:wrap;max-width:42%}
+  #legend i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:-1px}
+  #risBadge{position:absolute;left:9px;bottom:40px;font-size:9.5px;color:#7A6330;z-index:4;
+    background:rgba(255,253,245,.9);border:1px solid rgba(192,164,105,.5);padding:4px 9px;border-radius:5px;pointer-events:none}
   #risBadge b{color:var(--gold-d);font-variant-numeric:tabular-nums}
-  #exitHint{position:absolute;left:12px;top:10px;font-size:10.5px;color:var(--ink3);background:rgba(255,255,255,.75);
-    padding:3px 9px;border-radius:4px;display:none;border:1px solid var(--line);z-index:6}
-  #viewHint{position:absolute;right:10px;top:10px;font-size:10px;color:var(--ink3);z-index:4;
-    background:rgba(255,253,245,.8);border:1px solid rgba(192,164,105,.35);border-radius:6px;padding:3px 9px}
+  #viewHint{position:absolute;right:9px;top:9px;font-size:9.5px;color:var(--ink3);z-index:4;
+    background:rgba(255,253,245,.8);border:1px solid rgba(192,164,105,.35);border-radius:6px;padding:3px 8px}
+  #exitHint{position:absolute;left:11px;top:9px;font-size:10px;color:var(--ink3);background:rgba(255,255,255,.75);
+    padding:3px 8px;border-radius:4px;display:none;border:1px solid var(--line);z-index:6}
   body.stage-mode #topbar,body.stage-mode #panel,body.stage-mode #kpis{display:none}
   body.stage-mode #app{padding:0}
   body.stage-mode #stage{border-radius:0;border:0}
   body.stage-mode #exitHint{display:block}
 
+  /* ---------- 数据来源弹窗 ---------- */
+  #modal{position:fixed;inset:0;background:rgba(43,38,32,.45);backdrop-filter:blur(3px);z-index:50;display:none;padding:4vh 4vw}
+  #modal.on{display:block}
+  .mbox{background:#FBF7EC;border-radius:12px;max-width:1040px;margin:0 auto;max-height:92vh;overflow:auto;
+        box-shadow:0 18px 50px rgba(43,38,32,.3);padding:22px 26px 26px}
+  .mbox h2{font-size:15px;letter-spacing:.5px;margin-bottom:4px}
+  .mbox .sub{font-size:10.5px;color:var(--ink3);margin-bottom:16px}
+  .mbox h3{font-size:12px;margin:16px 0 7px;padding-left:9px;border-left:3px solid var(--gold)}
+  .mbox table{width:100%;border-collapse:collapse;font-size:10.5px}
+  .mbox th,.mbox td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+  .mbox th{background:#F1E9D6;font-weight:600;color:var(--ink2)}
+  .mbox td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .mbox .close{float:right;border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 13px;
+        font-size:11.5px;cursor:pointer;font-family:inherit;color:var(--ink2)}
+  .tag{display:inline-block;font-size:8.5px;padding:1px 5px;border-radius:3px;background:#EFE3C8;color:#7A6330;margin-left:5px}
+
+  @media (max-width:1240px){#kpis{grid-template-columns:repeat(4,1fr)}}
   @media (max-width:1180px){
     main{flex-direction:column}
-    #stage{flex:0 0 54vh}
+    #stage{flex:0 0 52vh}
     #panel{flex:1 1 auto;flex-direction:row;flex-wrap:wrap;overflow-y:auto}
-    #panel .card{flex:1 1 210px}
-    #kpis{grid-template-columns:repeat(3,1fr)}
+    #panel .card{flex:1 1 200px}
+    #kpis{grid-template-columns:repeat(4,1fr)}
   }
   @media (max-width:760px){
-    #app{padding:8px 10px;gap:8px}
-    #topbar{flex-wrap:wrap;gap:8px}
+    #app{padding:7px 9px;gap:7px}
+    #topbar{flex-wrap:wrap;gap:6px}
     .brand{flex:1 1 100%}
-    .brand h1{font-size:14px}
+    .brand h1{font-size:13.5px}
     .brand p{display:none}
-    .presets{flex:1 1 auto}
-    .presets button{padding:7px 10px;font-size:11px;flex:1}
-    .controls{flex:1 1 auto}
-    .controls .btn{padding:7px 8px;font-size:11px}
-    #stage{flex:0 0 44vh}
-    #panel{flex:1 1 auto;flex-direction:column;overflow-y:auto}
-    #pipe{top:6px;padding:6px 8px 5px}
-    .pstep{padding:3px 4px 2px}
-    .pstep b{font-size:9px}
+    .presets button{padding:6px 9px;font-size:10.5px}
+    .controls .btn{padding:6px 7px;font-size:10.5px}
+    #stage{flex:0 0 42vh}
+    #panel{flex-direction:column}
+    #pipe{top:5px;padding:5px 7px 4px}
+    .pstep{padding:2.5px 3px 2px}
+    .pstep b{font-size:8.5px}
     .pstep span,.pmarks,.ptitle{display:none}
-    #legend{display:none}
-    #viewHint{display:none}
-    #log{width:190px}
-    .kpi{padding:6px 8px}
-    .kpi .n{font-size:15px}
-    .kpi .c{display:none}
+    #legend{display:none}#viewHint{display:none}
+    #log{width:170px}
+    #kpis{grid-template-columns:repeat(2,1fr)}
+    .kpi{padding:5px 7px}
+    .kpi .n{font-size:14px}
   }
 </style>
 </head>
@@ -156,8 +179,8 @@
     <div class="brand">
       <div class="mark"><i></i><i></i><i></i><i></i></div>
       <div>
-        <h1>工厂具身智能体 · 车间实时仿真 3D</h1>
-        <p>60×40×8m 柔性装配车间 · 数字孪生驱动的建造预测与智能表面补盲</p>
+        <h1>工厂具身智能体 · 6G 算网协同车间仿真</h1>
+        <p>60×40×8m 柔性装配车间 · 20 台 AGV @1.2m/s · 4 个 pRRU · RIS 12 块 · 仿真折算 72 小时</p>
       </div>
     </div>
     <div class="presets">
@@ -165,7 +188,8 @@
       <button data-preset="optimal" class="active">6G 联合优化</button>
     </div>
     <div class="controls">
-      <button class="btn" id="btnRis">RIS 阵列：开</button>
+      <button class="btn" id="btnSrc">数据来源</button>
+      <button class="btn" id="btnRis">RIS：开</button>
       <button class="btn" id="btnPlay">暂停</button>
       <button class="btn" id="btnReset">重置</button>
       <button class="btn primary" id="btnStage">演示模式</button>
@@ -177,26 +201,26 @@
       <canvas id="cv"></canvas>
 
       <div id="pipe">
-        <div class="ptitle">数字孪生驱动的建造预测与智能表面补盲 · 实时管线</div>
+        <div class="ptitle">数字孪生语义地图驱动的遮挡预测与智能表面补盲 · 实时管线</div>
         <div class="psteps">
-          <div class="pstep" id="ps0"><b>① 建图</b><span>3DGS 建模 · 材质反射标注</span></div>
-          <div class="pstep" id="ps1"><b>② 传播计算</b><span>射线追踪 · 每 50ms 更新 · 误差≤2dB</span></div>
-          <div class="pstep" id="ps2"><b>③ 遮挡预测</b><span>VectorNet 类结构 · 提前 300–500ms</span></div>
-          <div class="pstep" id="ps3"><b>④ 相位决策</b><span>慢环 1Hz 组合 · 快环 20Hz 微调</span></div>
-          <div class="pstep" id="ps4"><b>⑤ 执行补盲</b><span>无源 RIS · 1-bit PIN 相位单元</span></div>
+          <div class="pstep" id="ps0"><b>① 建图</b><span>3DGS 语义地图 · 材质 ρ 标注</span></div>
+          <div class="pstep" id="ps1"><b>② 传播计算</b><span>射线追踪 · 50ms 周期 · 误差≤2dB</span></div>
+          <div class="pstep" id="ps2"><b>③ 遮挡预测</b><span>提前 300–500ms · 命中率 91.3%/98.7%</span></div>
+          <div class="pstep" id="ps3"><b>④ 相位决策</b><span>慢环 1Hz / 快环 20Hz · 4.2ms</span></div>
+          <div class="pstep" id="ps4"><b>⑤ 执行补盲</b><span>1-bit PIN · 256 单元 · +12.4dB</span></div>
         </div>
         <div class="pcyc"><div id="pbar"></div></div>
-        <div class="pmarks"><i>慢环 1Hz · 面板组合与码本下发</i><i class="fast">快环 20Hz · 相位微调</i></div>
+        <div class="pmarks"><i>慢环 1Hz · 面板组合与码本下发</i><i>快环 20Hz · 相位码字微调</i></div>
       </div>
 
       <div id="legend">
-        <span><i style="background:#A8853F;border-radius:50%"></i>6G 基站</span>
-        <span><i style="background:#E8D8B6"></i>RIS 智能表面</span>
-        <span><i style="background:rgba(200,168,96,.85)"></i>基站→面板→盲区 波束</span>
-        <span><i style="background:rgba(176,58,46,.55)"></i>盲区 &lt; -85 dBm</span>
+        <span><i style="background:#A8853F;border-radius:50%"></i>6G pRRU</span>
+        <span><i style="background:#E8D8B6;border:1px solid #A8853F"></i>RIS 0.6×0.6m</span>
+        <span><i style="background:rgba(200,168,96,.85)"></i>pRRU→面板→盲区 波束</span>
+        <span><i style="background:rgba(176,58,46,.55)"></i>盲区（低于解调门限）</span>
         <span><i style="background:rgba(168,133,63,.5);border:1px dashed #A8853F;border-radius:50%"></i>预测轨迹</span>
       </div>
-      <div id="viewHint">拖动旋转 · 滚轮/双指缩放 · 右键平移</div>
+      <div id="viewHint">拖动旋转 · 滚轮缩放 · 右键平移</div>
       <div id="exitHint">按 ESC 或双击画布退出演示模式</div>
       <div id="risBadge"></div>
       <div id="log"></div>
@@ -208,39 +232,32 @@
         <div id="sliders"></div>
       </div>
       <div class="card">
-        <div class="switch" style="margin-bottom:8px">
-          <span class="lab">通感一体（ISAC）</span>
-          <button class="sw on" id="swSensing"><i></i></button>
-        </div>
-        <div class="switch" style="margin-bottom:8px">
-          <span class="lab">材质与反射系数标注</span>
-          <button class="sw on" id="swMat"><i></i></button>
-        </div>
-        <div class="switch">
-          <span class="lab">波束可视化</span>
-          <button class="sw on" id="swBeam"><i></i></button>
-        </div>
+        <div class="switch"><span class="lab">通感一体（ISAC）</span><button class="sw on" id="swSensing"><i></i></button></div>
+        <div class="switch"><span class="lab">遮挡预测（300–500ms）</span><button class="sw on" id="swPred"><i></i></button></div>
+        <div class="switch"><span class="lab">材质与反射系数标注</span><button class="sw on" id="swMat"><i></i></button></div>
+        <div class="switch"><span class="lab">波束可视化</span><button class="sw on" id="swBeam"><i></i></button></div>
       </div>
       <div class="card">
-        <div class="cardhead"><span>算力切分策略</span></div>
+        <div class="cardhead"><span>算力切分策略</span><em>三级模型切分</em></div>
         <div class="seg" id="segSlice">
-          <button data-s="end">端侧</button>
-          <button data-s="edge">边缘</button>
-          <button data-s="cloud">云端</button>
-          <button data-s="dynamic" class="on">动态</button>
+          <button data-s="end">纯端侧</button>
+          <button data-s="cloud">纯云端</button>
+          <button data-s="dynamic" class="on">动态三级</button>
         </div>
+        <div class="segval">任务成功率 <b id="succVal">96.3</b> %</div>
+        <div class="segnote">纯端 76% / 纯云 82% / 方案 96.3%；端侧 SoC ≥40TOPS、≤15W，云端 VLA 7–13B，边缘蒸馏 1–3B</div>
       </div>
       <div class="card">
-        <div class="cardhead"><span>智能表面 RIS 阵列</span><em id="risStat">12 / 16 在线</em></div>
+        <div class="cardhead"><span>智能超表面阵列</span><em id="risStat">12 / 12 在线</em></div>
         <div class="risgrid" id="risgrid"></div>
         <div class="ristat">
-          <span>补盲面积 <b id="risFix">0</b> ㎡</span>
-          <span>平均增益 <b id="risEg">0.0</b> dB</span>
+          <span>补盲增益 <b id="risGain">12.4</b> dB</span>
+          <span>盲区 <b id="risBlind">1.9</b> %</span>
         </div>
-        <p class="rishint">面板贴在货架侧板、立柱与天花板下方，把基站波束<b>折过金属遮挡</b>送进盲区。点 3D 场景里的面板或上面小方块可单独断电，该区盲区会立刻回升。</p>
+        <p class="rishint">16 块候选点位，按方案部署 12 块；每块 0.6×0.6m、256 单元、1-bit 相位，贴装于立柱/货架侧板/天花板，无源免布线。点方块或 3D 面板可单板断电对比。</p>
       </div>
       <div class="card">
-        <div class="cardhead"><span>材质反射系数</span><em>3DGS 建图成果</em></div>
+        <div class="cardhead"><span>材质反射系数 ρ</span><em>3DGS 建图成果</em></div>
         <div id="matlist"></div>
       </div>
     </aside>
@@ -249,7 +266,65 @@
   <footer id="kpis"></footer>
 </div>
 
-<script>if(!window.WebGLRenderingContext){document.body.innerHTML='<p style="padding:40px;font-size:16px">当前浏览器不支持 WebGL，无法显示 3D 仿真，请使用 Chrome/Edge/Safari 打开。</p>';}</script>
+<div id="modal">
+  <div class="mbox">
+    <button class="close" id="mclose">关闭</button>
+    <h2>数据来源与口径</h2>
+    <p class="sub">本模拟器所有场景参数与指标值均取自《AI+6G 智慧工厂 AGV 场景项目方案》《工厂具身智能体 6G 方案（逐词大白话解析 / 大白话通读版）》，未作外推或美化。</p>
+
+    <h3>一、场景与部署（逐词解析 · 仿真平台 / 部署清单）</h3>
+    <table>
+      <tr><th style="width:22%">项目</th><th style="width:40%">文档值</th><th>本模拟器</th></tr>
+      <tr><td>厂房尺寸</td><td class="num">60 m × 40 m × 8 m</td><td class="num">60 × 40 × 8</td></tr>
+      <tr><td>金属货架</td><td class="num">12 组</td><td class="num">12 组</td></tr>
+      <tr><td>协作机器人</td><td class="num">4 台</td><td class="num">4 台</td></tr>
+      <tr><td>堆垛区</td><td class="num">2 处（纸箱 / 集装箱）</td><td class="num">2 处</td></tr>
+      <tr><td>AGV</td><td class="num">20 台 · 1.2 m/s</td><td class="num">20 台 · 1.2 m/s</td></tr>
+      <tr><td>分布式接入点</td><td class="num">4 个 pRRU，毫米波 / Sub-6 双频</td><td class="num">4 个（可调 2–6）</td></tr>
+      <tr><td>智能超表面</td><td class="num">12–16 块 · 0.6×0.6 m · 256 单元 · 1-bit</td><td class="num">12 块（可调 0–16）</td></tr>
+      <tr><td>控制周期 / 上行</td><td class="num">5 ms；4 路 1080p@30</td><td class="num">5 ms</td></tr>
+      <tr><td>仿真时长</td><td class="num">折算 72 小时连续运行</td><td class="num">—</td></tr>
+    </table>
+
+    <h3>二、仿真对照（逐词解析 · 仿真对照表）</h3>
+    <table>
+      <tr><th>指标</th><th>5G-A 基线</th><th>6G 方案</th><th>变化</th></tr>
+      <tr><td>遮挡区平均接收功率</td><td class="num">−96.2 dBm</td><td class="num">−83.8 dBm</td><td class="num">+12.4 dB</td></tr>
+      <tr><td>遮挡区平均吞吐</td><td class="num">38 Mbps</td><td class="num">210 Mbps</td><td class="num">5.5 倍</td></tr>
+      <tr><td>波束预测命中率</td><td class="num">—</td><td class="num">91.3% / 98.7%</td><td class="num">Top1 / Top3</td></tr>
+      <tr><td>切换中断时长</td><td class="num">120 ms</td><td class="num">8 ms</td><td class="num">−93%</td></tr>
+      <tr><td>遮挡区链路中断频次</td><td class="num">3.4 次/小时</td><td class="num">0.06 次/小时</td><td class="num">−98%</td></tr>
+      <tr><td>端到端动作闭环时延 P99</td><td class="num">96 ms</td><td class="num">18.6 ms</td><td class="num">−81%</td></tr>
+      <tr><td>任务成功率</td><td class="num">82% / 76%</td><td class="num">96.3%</td><td class="num">+14.3 pp</td></tr>
+      <tr><td>非视距定位误差</td><td class="num">42 cm</td><td class="num">7.8 cm</td><td class="num">−81%</td></tr>
+      <tr><td>相位决策时延</td><td class="num">—</td><td class="num">4.2 ms</td><td class="num">—</td></tr>
+    </table>
+
+    <h3>三、八项指标：现状与目标（八项指标表）</h3>
+    <table>
+      <tr><th>维度</th><th>关键指标</th><th>现状基线</th><th>目标值</th><th>度量方式</th></tr>
+      <tr><td>时延</td><td>端到端动作闭环时延 P99</td><td class="num">60—120 ms</td><td class="num">≤ 20 ms</td><td>端侧打点＋空口测量</td></tr>
+      <tr><td>可靠性</td><td>遮挡区链路中断频次</td><td class="num">2—5 次/小时</td><td class="num">≤ 0.1 次/小时</td><td>100 ms 门限探针</td></tr>
+      <tr><td>覆盖</td><td>单站盲区面积占比</td><td class="num">8%—15%</td><td class="num">≤ 2%</td><td>射线追踪＋RSRP 网格</td></tr>
+      <tr><td>定位</td><td>非视距场景定位误差</td><td class="num">30—50 cm</td><td class="num">≤ 10 cm</td><td>激光跟踪仪真值对比</td></tr>
+      <tr><td>算力</td><td>单机可用等效算力</td><td class="num">20—40 TOPS</td><td class="num">≥ 500 TOPS</td><td>调度平台统计</td></tr>
+      <tr><td>成本</td><td>单机算力与通信 BOM</td><td class="num">基准 100%</td><td class="num">≤ 60%</td><td>BOM 核算</td></tr>
+      <tr><td>柔性</td><td>换任务重配置时间</td><td class="num">2—8 小时</td><td class="num">≤ 10 分钟</td><td>现场计时</td></tr>
+      <tr><td>带宽</td><td>单机上行吞吐</td><td class="num">60—100 Mbps</td><td class="num">≥ 300 Mbps</td><td>吞吐测试</td></tr>
+    </table>
+
+    <h3>四、口径说明</h3>
+    <table>
+      <tr><th style="width:26%">说明项</th><th>内容</th></tr>
+      <tr><td>基线取值</td><td>时延 96ms、中断 3.4 次/h、定位 42cm、吞吐 38Mbps 取仿真对照表基线；盲区 8%、算力 40TOPS、上行 60Mbps、换线 4h 取八项指标表现状区间端点</td></tr>
+      <tr><td>方案取值</td><td>取仿真对照表方案列（18.6ms / 0.06 次/h / 7.8cm / 210Mbps / 96.3%），盲区 1.9%（目标 ≤2%）、算力 500TOPS、上行 300Mbps、BOM 61%（1.8万→1.1万）、换线 10min</td></tr>
+      <tr><td>任务成功率</td><td>纯云 82%、纯端 76%、方案 96.3%，按文档原值，不做插值美化</td></tr>
+      <tr><td>仿真性质</td><td>3D 场景为实时动态演示，用于展示遮挡—预测—补盲的因果链；指标数值按文档口径标定，不替代射线追踪仿真结果</td></tr>
+    </table>
+  </div>
+</div>
+
+<script>if(!window.WebGLRenderingContext){document.body.innerHTML='<p style="padding:40px;font-size:16px">当前浏览器不支持 WebGL，请使用 Chrome / Edge / Safari 打开。</p>';}</script>
 <script src="js/three.min.js"></script>
 <script src="js/OrbitControls.js"></script>
 <script src="js/app.js"></script>

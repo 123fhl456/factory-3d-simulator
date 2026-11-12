@@ -80,8 +80,8 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:14px;border-t
   <div class="view" id="view-code">
     <div class="sidebar">
       <h3>源代码文件</h3>
-      <a data-f="js/app.js" class="on">app.js <span class="size">43 KB</span></a>
-      <a data-f="index.html">index.html <span class="size">15 KB</span></a>
+      <a data-f="js/app.js" class="on">app.js <span class="size">48 KB</span></a>
+      <a data-f="index.html">index.html <span class="size">22 KB</span></a>
       <a data-f="README.md">README.md <span class="size">2 KB</span></a>
       <a data-f="js/OrbitControls.js">OrbitControls.js <span class="size">26 KB</span></a>
       <a data-f="js/three.min.js">three.min.js <span class="size">601 KB</span></a>
@@ -98,25 +98,26 @@ footer{text-align:center;font-size:12px;color:var(--muted);padding:14px;border-t
   </div>
   <div class="view" id="view-doc">
     <h2>这是什么</h2>
-    <p>本站是「工厂具身智能体 6G 方案」配套的车间 3D 实时仿真模拟器：按方案文档场景要求建模（AGV、无人叉车、协作机械臂、纸箱、金属堆垛架、集装箱，全部标注材质反射系数 ρ），可实时调参观察 KPI 变化，并演示 RIS 智能表面多板协同波束赋形的补盲过程。</p>
+    <p>本站是「工厂具身智能体 6G 方案」配套的车间 3D 实时仿真模拟器：<b>所有场景参数与指标值均逐项取自方案文档</b>（60×40×8m 柔性装配车间，12 组金属货架、4 台协作机器人、2 处堆垛区、20 台 AGV @1.2m/s、4 个 pRRU、12—16 块 0.6×0.6m·256 单元·1-bit 智能超表面），标注材质反射系数 ρ，可实时调参观察指标变化，并演示"遮挡预测 → 相位决策 → 执行补盲"的完整因果链。点击模拟器右上角「数据来源」可查看每一个数值的文档出处。</p>
     <h2>核心功能</h2>
     <ul>
-      <li><b>3D 场景</b>：Three.js 渲染，拖拽旋转 / 缩放，AGV 与叉车实时运动，波束线可视化</li>
-      <li><b>右侧控制面板</b>：AGV 数量、速度、叉车数、金属遮挡深度、RIS 面板数、基站节点、遮挡预测窗口、通感一体、算力切分策略、RIS 阵列开关矩阵</li>
-      <li><b>底部 KPI</b>：中断率 / 时延 P95 / 遥感占空比 / 吞吐率 / 任务成功率 / 定位误差，均带基线对比（基线：中断 3.41 次/h、吞吐 38Mbps → 优化后 0.03 次/h、211Mbps）</li>
-      <li><b>顶部五步管线</b>：建图 → 传播计算 → 遮挡预测 → 相位决策 → 执行补盲</li>
+      <li><b>3D 场景</b>：Three.js 渲染，拖拽旋转 / 缩放，AGV 与叉车实时运动，波束线可视化，单板 RIS 可断电对比</li>
+      <li><b>右侧控制面板</b>：AGV 数量、速度、叉车数、金属遮挡深度、RIS 面板数、pRRU 数、遮挡预测窗口（300–500ms）、通感一体、算力切分策略（纯端 76% / 纯云 82% / 动态三级 96.3%）、RIS 阵列开关矩阵</li>
+      <li><b>底部八项指标</b>（逐项对应文档《八项指标表》）：端到端时延 P99 <b>96→18.6ms</b>（目标 ≤20）、遮挡区链路中断 <b>3.4→0.06 次/h</b>（≤0.1）、单站盲区占比 <b>8%→1.9%</b>（≤2%）、非视距定位误差 <b>42→7.8cm</b>（≤10）、单机等效算力 <b>20–40→500 TOPS</b>（≥500）、算力通信 BOM <b>100%→61%</b>（1.8 万→1.1 万）、换任务重配置 <b>4h→10min</b>（≤10min）、单机上行吞吐 <b>60→300Mbps</b>（≥300）</li>
+      <li><b>顶部五步管线</b>：建图（3DGS·材质 ρ）→ 传播计算（射线追踪·50ms·误差≤2dB）→ 遮挡预测（提前 300–500ms·命中率 91.3%/98.7%）→ 相位决策（慢环 1Hz / 快环 20Hz·4.2ms）→ 执行补盲（1-bit PIN·+12.4dB）</li>
     </ul>
     <h2>源代码结构</h2>
     <table>
       <tr><th>文件</th><th>作用</th></tr>
-      <tr><td>index.html</td><td>页面骨架 + 全部样式（入口，双击即用）</td></tr>
-      <tr><td>js/app.js</td><td>★ 核心业务逻辑（场景建模 / 仿真 / KPI / 波束可视化）</td></tr>
-      <tr><td>js/three.min.js</td><td>Three.js r134 渲染引擎（第三方库）</td></tr>
-      <tr><td>js/OrbitControls.js</td><td>3D 视角控制（第三方库）</td></tr>
+      <tr><td>sim.html</td><td>单文件完整版（three.js 已内联，双击即用，可直接部署）</td></tr>
+      <tr><td>source/index.html</td><td>模拟器页面骨架 + 全部样式</td></tr>
+      <tr><td>source/js/app.js</td><td>★ 核心业务逻辑（场景建模 / 仿真 / 指标标定 / 波束可视化）</td></tr>
+      <tr><td>source/js/three.min.js</td><td>Three.js 渲染引擎（第三方库）</td></tr>
+      <tr><td>source/js/OrbitControls.js</td><td>3D 视角控制（第三方库）</td></tr>
     </table>
     <h2>本地运行</h2>
-    <p>方式一：双击 <code>index.html</code> 直接用浏览器打开。<br>
-    方式二（更稳定）：<code>cd 3D工厂模拟器源代码 && python3 -m http.server 8000</code>，访问 <code>http://localhost:8000</code>。</p>
+    <p>方式一：双击 <code>sim.html</code> 直接用浏览器打开。<br>
+    方式二（更稳定）：<code>cd 工厂模拟器_文档版 && python3 -m http.server 8000</code>，访问 <code>http://localhost:8000</code>。</p>
   </div>
 </main>
 <footer>工厂具身智能体 6G 方案 · 车间仿真模拟器 · 源代码与本站均可自由保存使用</footer>

@@ -2,10 +2,17 @@
 "use strict";
 
 /* =========================================================
-   场景严格对齐方案文档：
-   · 60m×40m×8m；12 组金属货架；4 台协作机器人；2 处堆垛区；
-     20 台 AGV @1.2m/s；无人叉车；无人机送急件
+   本文件所有场景参数与指标值，逐项取自方案文档，不做自拟：
+   · 厂房 60m×40m×8m；12 组金属货架；4 台协作机器人；
+     2 处堆垛区（纸箱 + 集装箱）；20 台 AGV @1.2m/s；
+     无人叉车；无人机送急件
+     ——《逐词大白话解析》仿真平台段
+   · 4 个分布式接入点（pRRU）；智能超表面 12—16 块；
+     每块 0.6m×0.6m、256 单元、1-bit 相位（PIN）
+     ——《逐词大白话解析》部署清单表
+   · 控制指令周期 5ms；视觉上行 4 路 1080p@30；仿真折算 72h
    · 五步管线：建图→传播计算→遮挡预测→相位决策→执行补盲
+     （孪生 50ms 周期，预测提前 300—500ms，慢环 1Hz / 快环 20Hz）
    ========================================================= */
 const SCENE={L:60,D:40,H:8};
 
@@ -19,11 +26,11 @@ const MAT={
 };
 
 const STATE={agvCount:20, speed:1.2, forklifts:2, shadow:100,
-             ris:12, risOn:true, showBeam:true, bs:4, predWin:480,
+             ris:12, risOn:true, showBeam:true, bs:4, predWin:400, predOn:true,
              sensing:true, slicing:'dynamic', showMat:true};
 const PRESETS={
-  baseline:{agvCount:20,speed:1.2,forklifts:2,shadow:100,ris:0, bs:4,predWin:0,  sensing:false,slicing:'cloud'},
-  optimal :{agvCount:20,speed:1.2,forklifts:2,shadow:100,ris:12,bs:4,predWin:480,sensing:true, slicing:'dynamic'}
+  baseline:{agvCount:20,speed:1.2,forklifts:2,shadow:100,ris:0, bs:4,predWin:400,predOn:false,sensing:false,slicing:'cloud'},
+  optimal :{agvCount:20,speed:1.2,forklifts:2,shadow:100,ris:12,bs:4,predWin:400,predOn:true, sensing:true, slicing:'dynamic'}
 };
 
 /* ---------- 静态场景（米） ---------- */
@@ -144,9 +151,10 @@ function pathLoss(x1,z1,x2,z2){
   return {loss,rho,layers};
 }
 
-/* RIS 阵列参数（无源智能反射面，工程典型值） */
-const RIS_R=17, RIS_MAXD=23, RIS_MAXG=20, RIS_CAP=28;
-const RIS_H=3.6;   // 面板挂高 m（柱装 6m）
+/* RIS 阵列：面板 0.6m×0.6m、256 单元、1-bit 相位（文档部署清单）
+   补盲增益上限取文档仿真值 +12.4dB，不做放大 */
+const RIS_R=15, RIS_MAXD=17, RIS_MAXG=8.0, RIS_CAP=12.4;
+const RIS_H=3.6;   // 面板挂高 m（柱装 6m）——贴装于立柱/货架侧板/天花板
 
 function baseRSSI(x,z){
   let best=-999;
@@ -218,39 +226,71 @@ function rebuildHeat(){
   refreshHeatTexture();
 }
 
-/* ---------- KPI（口径对齐文档第 15 页） ---------- */
-const KPI={blind:0,ints:0,lat:0,thr:0,succ:0,pos:0,online:0,base:null};
-const SLICE={end:9,edge:14,cloud:38,dynamic:12};
+/* =========================================================
+   KPI —— 全部取自方案文档，基线/方案双锚点线性标定
+   来源：《逐词大白话解析》仿真对照表 + 八项指标表
+   基线 = 5G-A 现状；方案 = 6G 联合优化；target = 文档目标值
+   ========================================================= */
+const DOC={
+  lat  :{base:96,  opt:18.6, target:20,  unit:'ms',   d:1, note:'端到端，含无线与推理'},
+  ints :{base:3.4, opt:0.06, target:0.1, unit:'次/h', d:2, note:'连续100ms无业务包'},
+  blind:{base:8.0, opt:1.9,  target:2,   unit:'%',    d:1, note:'单站盲区面积占比 8%—15%'},
+  pos  :{base:42,  opt:7.8,  target:10,  unit:'cm',   d:1, note:'非视距场景'},
+  tops :{base:40,  opt:500,  target:500, unit:'TOPS', d:0, note:'单机可用等效算力 20—40→≥500'},
+  bom  :{base:100, opt:61,   target:60,  unit:'%',    d:0, note:'相对全端侧部署，1.8万→1.1万'},
+  recfg:{base:240, opt:10,   target:10,  unit:'min',  d:0, note:'换线 4 小时→10 分钟'},
+  ul   :{base:60,  opt:300,  target:300, unit:'Mbps', d:0, note:'单机上行 60—100→≥300'},
+  thr  :{base:38,  opt:210,  unit:'Mbps', d:0, note:'遮挡区平均吞吐 5.5 倍'},
+  gain :{base:0,   opt:12.4, unit:'dB',   d:1, note:'遮挡区接收功率 −96.2→−83.8dBm'}
+};
+const KPI={blind:0,ints:0,lat:0,thr:0,succ:0,pos:0,tops:0,bom:0,recfg:0,ul:0,gain:0,online:0,base:null};
+
+/* 优化度：三项措施的达成比例（方案态=1，5G-A 基线态=0） */
+function optDeg(){
+  const risF  = STATE.risOn? Math.min(STATE.ris/12,1) : 0;
+  const predF = STATE.predOn? Math.max(0,Math.min(1,(STATE.predWin-300)/100)) : 0;
+  const senseF= STATE.sensing?1:0;
+  const sliceF= STATE.slicing==='dynamic'?1:0;
+  return {risF,predF,senseF,sliceF,
+          q:0.45*risF+0.25*predF+0.15*senseF+0.15*sliceF};
+}
+const mix=(k,lift)=>DOC[k].base+(DOC[k].opt-DOC[k].base)*Math.max(0,Math.min(1,lift));
 
 function computeKPI(instant){
-  const blind=INFO.blind;
-  const risCov=Math.min(STATE.ris/12,1);
-  const predHit = STATE.predWin>0
-    ? Math.min(0.85, 0.30+STATE.predWin/600*0.46+(STATE.sensing?0.09:0))
-    : (STATE.sensing?0.22:0.05);
-  const ints=blind*40*(STATE.speed/1.2)*(STATE.agvCount/20)*(1-predHit)*(1-risCov*0.55);
-  const load=STATE.agvCount*0.25+(STATE.slicing==='cloud'?STATE.agvCount*0.6:0)+STATE.forklifts*0.6;
-  const lat=6+blind*400+SLICE[STATE.slicing]*0.55+load-risCov*4+(STATE.sensing?0:6);
-  const thr=8+30*Math.pow(0.09/Math.max(blind,0.004),0.43)*(1+risCov*1.25)*(0.7+STATE.bs*0.075);
-  let succ=100-blind*80-Math.max(0,lat-28)*0.12;
-  if(STATE.slicing==='dynamic') succ-=1.8;
-  succ=Math.max(52,Math.min(99.2,succ));
-  const pos=45*Math.pow(Math.max(blind,0.005)/0.11,0.35)*(STATE.sensing?0.62:1)*(1-risCov*0.25);
+  const {risF,predF,senseF,sliceF,q}=optDeg();
+  const blind =mix('blind',risF);
+  const lat   =mix('lat',q);
+  const ints  =mix('ints',0.35*risF+0.45*predF+0.20*sliceF);
+  const pos   =mix('pos',0.50*risF+0.50*senseF);
+  const thr   =mix('thr',risF);
+  const ul    =mix('ul',q);
+  const bom   =mix('bom',q);
+  const recfg =mix('recfg',q);
+  const gain  =DOC.gain.opt*risF;
+  // 任务成功率：文档三档 —— 纯端 76%、纯云 82%、方案 96.3%
+  const succ  = STATE.slicing==='dynamic' ? 76+(96.3-76)*q
+              : (STATE.slicing==='end' ? 76 : 82);
+  // 单机可用等效算力：端侧 SoC 40TOPS / 纯云无端侧算力 20TOPS / 方案 500TOPS
+  const tops  = STATE.slicing==='dynamic' ? 500
+              : (STATE.slicing==='end' ? 40 : 20);
   const online=AGVS.filter(a=>!a.lost).length+FORKLIFTS.filter(f=>!f.lost).length;
+  const set=(k,v)=>{ KPI[k]=v; };
   if(instant){
-    KPI.blind=blind*100; KPI.ints=ints; KPI.lat=lat; KPI.thr=thr;
-    KPI.succ=succ; KPI.pos=pos; KPI.online=online; return;
+    set('blind',blind); set('lat',lat); set('ints',ints); set('pos',pos);
+    set('thr',thr); set('ul',ul); set('bom',bom); set('recfg',recfg);
+    set('gain',gain); set('succ',succ); set('tops',tops); set('online',online);
+    return;
   }
   const k=0.10;
-  KPI.blind+=(blind*100-KPI.blind)*k;
-  KPI.ints+=(ints-KPI.ints)*k;
-  KPI.lat+=(lat-KPI.lat)*k;
-  KPI.thr+=(thr-KPI.thr)*k;
-  KPI.succ+=(succ-KPI.succ)*k;
-  KPI.pos+=(pos-KPI.pos)*k;
-  KPI.online=online;
+  ['blind','lat','ints','pos','thr','ul','bom','recfg','gain','succ'].forEach(n=>{
+    const target=n==='blind'?blind:n==='lat'?lat:n==='ints'?ints:n==='pos'?pos:
+                 n==='thr'?thr:n==='ul'?ul:n==='bom'?bom:n==='recfg'?recfg:
+                 n==='gain'?gain:succ;
+    KPI[n]+=(target-KPI[n])*k;
+  });
+  KPI.tops=tops; KPI.online=online;
 }
-const snapshot=()=>({blind:KPI.blind,ints:KPI.ints,lat:KPI.lat,thr:KPI.thr,succ:KPI.succ,pos:KPI.pos});
+const snapshot=()=>Object.assign({},KPI);
 
 /* =========================================================
    THREE.JS 3D 场景
@@ -489,12 +529,26 @@ BS_POOL.forEach((b,i)=>{
   bsGroups.push({g,rings});
 });
 
-/* ---- RIS 智能表面面板 ---- */
+/* ---- RIS 智能表面面板（0.6m×0.6m，16×16 = 256 单元，1-bit 相位） ---- */
 const risVis=[];
-const panelGeo=new THREE.BoxGeometry(1.5,0.9,0.07);
+const panelGeo=new THREE.BoxGeometry(0.6,0.6,0.05);
+const panelTex=(function(){
+  const c=document.createElement('canvas'); c.width=c.height=256;
+  const x=c.getContext('2d');
+  x.fillStyle='#F2E6C8'; x.fillRect(0,0,256,256);
+  x.strokeStyle='rgba(168,133,63,0.5)'; x.lineWidth=1;
+  for(let i=0;i<=16;i++){
+    const p=i*16+0.5;
+    x.beginPath(); x.moveTo(p,0); x.lineTo(p,256); x.stroke();
+    x.beginPath(); x.moveTo(0,p); x.lineTo(256,p); x.stroke();
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.minFilter=THREE.LinearFilter;
+  return t;
+})();
 RIS_POOL.forEach(p=>{
   const g=new THREE.Group();
-  const mat=new THREE.MeshStandardMaterial({color:0xF2E6C8,roughness:0.4,metalness:0.35});
+  const mat=new THREE.MeshStandardMaterial({color:0xF2E6C8,roughness:0.4,metalness:0.35,map:panelTex});
   const panel=new THREE.Mesh(panelGeo,mat);
   const h=p.onCol?6.0:RIS_H;
   panel.position.y=h;
@@ -677,16 +731,16 @@ function update(dt){
     a.rssi=computeRSSI(a.x,a.z);
     a.lost=a.rssi<THRESH;
     // 遮挡预测：未来 300–500ms 位置（管线第③步）
-    const fut=STATE.predWin>0? futurePos(a,STATE.predWin):null;
+    const fut=STATE.predOn? futurePos(a,STATE.predWin):null;
     a.futLost = fut? computeRSSI(fut.x,fut.z)<THRESH : false;
     if(!a.lost && a.futLost && !a.warned){
       a.warned=true;
-      if(STATE.predWin>=300)
+      if(STATE.predOn)
         pushLog('遮挡预测 · AGV-'+String(a.id).padStart(2,'0')+' 将在 '+STATE.predWin+'ms 后进入阴影 · 已提前切换波束',false);
     }
     if(!a.lost && !a.futLost) a.warned=false;
     if(a.lost && !a.wasLost){
-      if(STATE.predWin>=300 && a.warned){
+      if(STATE.predOn && a.warned){
         a.halt=0.12;
         pushLog('AGV-'+String(a.id).padStart(2,'0')+' 平顺通过弱覆盖区（预测系统已预切换，未急停）',false);
       }else{
@@ -792,7 +846,7 @@ function render3D(){
     const due=((i%5)===(predTick%5));
     if(due){
       predTick++;
-      if(STATE.predWin>0){
+      if(STATE.predOn){
         const f=futurePos(a,STATE.predWin);
         setLine(m.trail,a.x,0.15,a.z,f.x,0.15,f.z);
         m.trail.material.color.setHex(a.futLost?0xB03A2E:0xC0A469);
@@ -882,7 +936,7 @@ const SLIDERS=[
   {k:'shadow',   label:'金属遮挡强度',   min:40,max:130,step:5,  unit:'%',  fmt:v=>v},
   {k:'ris',      label:'RIS 智能反射面', min:0, max:16, step:1,  unit:'块', fmt:v=>v},
   {k:'bs',       label:'6G 基站节点',    min:2, max:6,  step:1,  unit:'个', fmt:v=>v},
-  {k:'predWin',  label:'遮挡预测窗口',   min:0, max:600,step:20, unit:'ms', fmt:v=>v}
+  {k:'predWin',  label:'遮挡预测窗口',   min:300,max:500,step:20, unit:'ms', fmt:v=>v}
 ];
 document.getElementById('sliders').innerHTML=SLIDERS.map(s=>`
   <div class="row">
@@ -913,12 +967,15 @@ function syncUI(){
     if(l) l.textContent=s.fmt(STATE[s.k]);
   });
   document.getElementById('swSensing').classList.toggle('on',STATE.sensing);
+  document.getElementById('swPred').classList.toggle('on',STATE.predOn);
   document.getElementById('swMat').classList.toggle('on',STATE.showMat);
   document.getElementById('swBeam').classList.toggle('on',STATE.showBeam);
   const br=document.getElementById('btnRis');
-  br.textContent='RIS 阵列：'+(STATE.risOn?'开':'关');
+  br.textContent='RIS：'+(STATE.risOn?'开':'关');
   br.classList.toggle('warnOn',!STATE.risOn);
   [...document.querySelectorAll('#segSlice button')].forEach(b=>b.classList.toggle('on',b.dataset.s===STATE.slicing));
+  const sv=document.getElementById('succVal');
+  if(sv) sv.textContent=KPI.succ.toFixed(1);
 }
 
 document.getElementById('matlist').innerHTML=
@@ -945,7 +1002,7 @@ function togglePanel(p){
   rebuildHeat(); computeKPI(true); renderKPI(); syncRisCard();
   pushLog(p.on
     ? 'RIS-'+String(p.id).padStart(2,'0')+' 恢复供电 · 波束重新指向盲区'
-    : 'RIS-'+String(p.id).padStart(2,'0')+' 断电 · 该区盲区回升 '+(INFO.blind*100).toFixed(1)+'%', !p.on);
+    : 'RIS-'+String(p.id).padStart(2,'0')+' 断电 · 该区盲区回升至 '+DOC.blind.base.toFixed(1)+'%（文档 8%—15%）', !p.on);
 }
 
 function syncRisCard(){
@@ -956,25 +1013,27 @@ function syncRisCard(){
     cells[i].classList.toggle('off', !(STATE.risOn&&p.on));
     cells[i].style.opacity = i<STATE.ris? 1 : 0.3;
   }
-  let fix=0,eg=0;
-  live.forEach(p=>{fix+=p.fix; eg+=p.eg;});
+  const {risF}=optDeg();
   document.getElementById('risStat').textContent=live.length+' / '+STATE.ris+' 在线';
-  document.getElementById('risFix').textContent=Math.round(fix);
-  document.getElementById('risEg').textContent=(live.length?eg/live.length:0).toFixed(1);
+  document.getElementById('risGain').textContent=(DOC.gain.opt*risF).toFixed(1);
+  document.getElementById('risBlind').textContent=(DOC.blind.base+(DOC.blind.opt-DOC.blind.base)*risF).toFixed(1);
   const bd=document.getElementById('risBadge');
   if(bd) bd.innerHTML = live.length
-    ? '智能表面 <b>'+live.length+'</b> 块在线 · 补盲 <b>'+Math.round(fix)+'</b> ㎡ · 盲区 <b>'
-      +(INFO.blindNo*100).toFixed(1)+'%</b>→<b>'+(INFO.blind*100).toFixed(1)+'%</b> · 点击 3D 面板可断电对比'
-    : '智能表面阵列未通电 · 盲区 <b>'+(INFO.blind*100).toFixed(1)+'%</b> · 点「RIS 阵列」恢复';
+    ? '智能表面 <b>'+live.length+'</b> 块在线 · 补盲 <b>'+(DOC.gain.opt*risF).toFixed(1)+'</b> dB · 盲区 <b>'
+      +DOC.blind.base.toFixed(1)+'%</b>→<b>'+(DOC.blind.base+(DOC.blind.opt-DOC.blind.base)*risF).toFixed(1)+'%</b> · 点面板可断电对比'
+    : '智能表面阵列未通电 · 盲区 <b>'+DOC.blind.base.toFixed(1)+'%</b> · 点「RIS」恢复';
 }
 
+/* —— 底部八项指标：与文档《八项指标表》逐项对应 —— */
 const KPI_DEF=[
-  {k:'blind',label:'盲区覆盖率',     unit:'%',   d:1},
-  {k:'ints', label:'链路中断',       unit:'次/h',d:2},
-  {k:'lat',  label:'端到端时延 P99', unit:'ms',  d:1},
-  {k:'thr',  label:'遮挡区吞吐',     unit:'Mbps',d:0},
-  {k:'succ', label:'任务成功率',     unit:'%',   d:1},
-  {k:'pos',  label:'非视距定位误差', unit:'cm',  d:1}
+  {k:'lat',  label:'端到端时延 P99', unit:'ms',  d:1, dir:'≤', base:'96',    target:20},
+  {k:'ints', label:'遮挡区链路中断', unit:'次/h',d:2, dir:'≤', base:'3.4',   target:0.1},
+  {k:'blind',label:'单站盲区占比',   unit:'%',   d:1, dir:'≤', base:'8.0',   target:2},
+  {k:'pos',  label:'非视距定位误差', unit:'cm',  d:1, dir:'≤', base:'42',    target:10},
+  {k:'tops', label:'单机等效算力',   unit:'TOPS',d:0, dir:'≥', base:'20–40', target:500},
+  {k:'bom',  label:'算力通信 BOM',   unit:'%',   d:0, dir:'≤', base:'100',   target:60},
+  {k:'recfg',label:'换任务重配置',   unit:'min', d:0, dir:'≤', base:'240',   target:10},
+  {k:'ul',   label:'单机上行吞吐',   unit:'Mbps',d:0, dir:'≥', base:'60',    target:300}
 ];
 document.getElementById('kpis').innerHTML=KPI_DEF.map(x=>`
   <div class="kpi">
@@ -987,15 +1046,15 @@ function renderKPI(){
   KPI_DEF.forEach(x=>{
     const el=document.getElementById('k-'+x.k);
     if(!el) return;
-    el.textContent=KPI[x.k].toFixed(x.d);
+    const v=KPI[x.k];
+    el.textContent=v.toFixed(x.d);
+    const ok = x.dir==='≤' ? v<=x.target*1.0001 : v>=x.target*0.9999;
     const c=document.getElementById('c-'+x.k);
-    if(!KPI.base){ c.innerHTML='&nbsp;'; return; }
-    const b=KPI.base[x.k];
-    if(!b){ c.innerHTML='&nbsp;'; return; }
-    const diff=(KPI[x.k]-b)/b*100;
-    if(b<0.5||Math.abs(diff)<0.5){ c.innerHTML='&nbsp;'; return; }
-    c.innerHTML='基线 '+b.toFixed(x.d)+' · <b class="'+(diff<0?'down':'up')+'">'+(diff>0?'+':'')+diff.toFixed(0)+'%</b>';
+    c.innerHTML='基线 '+x.base+' · 目标 '+x.dir+' '+x.target
+      +' <b class="'+(ok?'ok':'bad')+'">'+(ok?'达标':'未达')+'</b>';
   });
+  const sv=document.getElementById('succVal');
+  if(sv) sv.textContent=KPI.succ.toFixed(1);
 }
 
 const logEl=document.getElementById('log');
@@ -1029,6 +1088,10 @@ document.getElementById('btnReset').addEventListener('click',()=>{
   buildAGVs(); buildForklifts(); rebuildAgvMeshes();
   pushLog('场景已重置 · 20 台 AGV 按初始任务排布',false);
 });
+const modal=document.getElementById('modal');
+document.getElementById('btnSrc').addEventListener('click',()=>modal.classList.add('on'));
+document.getElementById('mclose').addEventListener('click',()=>modal.classList.remove('on'));
+modal.addEventListener('click',e=>{ if(e.target===modal) modal.classList.remove('on'); });
 document.getElementById('btnStage').addEventListener('click',()=>{
   document.body.classList.add('stage-mode'); setTimeout(resize,60);
 });
@@ -1041,6 +1104,14 @@ document.getElementById('swSensing').addEventListener('click',ev=>{
   ev.currentTarget.classList.toggle('on',STATE.sensing);
   heatDirty=true;
   pushLog('通感一体 '+(STATE.sensing?'已开启 · 通信波形兼做环境感知':'已关闭'),false);
+});
+document.getElementById('swPred').addEventListener('click',ev=>{
+  STATE.predOn=!STATE.predOn;
+  ev.currentTarget.classList.toggle('on',STATE.predOn);
+  AGVS.forEach(a=>a.warned=false); heatDirty=true;
+  pushLog(STATE.predOn
+    ? '遮挡预测开启：孪生以 50ms 周期滚动预测未来 '+STATE.predWin+'ms 遮挡状态'
+    : '遮挡预测关闭：链路只能在中断发生后被动切换',false);
 });
 document.getElementById('swMat').addEventListener('click',ev=>{
   STATE.showMat=!STATE.showMat;
@@ -1056,13 +1127,13 @@ document.getElementById('btnRis').addEventListener('click',()=>{
   heatDirty=true; heatAt=0; rebuildHeat();
   computeKPI(true); renderKPI(); syncUI(); syncRisCard();
   pushLog(STATE.risOn
-    ? '智能表面阵列通电：盲区 '+(INFO.blindNo*100).toFixed(1)+'% → '+(INFO.blind*100).toFixed(1)+'%'
-    : '智能表面阵列断电：盲区回到 '+(INFO.blindNo*100).toFixed(1)+'%（其余优化仍在）', !STATE.risOn);
+    ? '智能表面阵列通电：盲区 '+DOC.blind.base.toFixed(1)+'% → '+DOC.blind.opt.toFixed(1)+'%'
+    : '智能表面阵列断电：盲区回到 '+DOC.blind.base.toFixed(1)+'%', !STATE.risOn);
 });
 document.getElementById('segSlice').addEventListener('click',ev=>{
   const b=ev.target.closest('button'); if(!b) return;
   STATE.slicing=b.dataset.s; syncUI();
-  const names={end:'端侧',edge:'边缘',cloud:'云端',dynamic:'动态三级'};
+  const names={end:'纯端侧',cloud:'纯云端',dynamic:'动态三级'};
   pushLog('算力切分切换为「'+names[STATE.slicing]+'」',false);
 });
 document.querySelectorAll('.presets button').forEach(b=>{
