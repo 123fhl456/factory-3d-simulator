@@ -3,9 +3,9 @@
 
 /* =========================================================
    本文件所有场景参数与指标值，逐项取自方案文档，不做自拟：
-   · 厂房 60m×40m×8m；12 组金属货架；4 台协作机器人；
-     2 处堆垛区（纸箱 + 集装箱）；20 台 AGV @1.2m/s；
-     无人叉车；无人机送急件
+   · 厂房 120m×60m×8m（答辩 PPT 第 13 页仿真场景）；
+     8 排金属货架；12 台协作机器人；2 处堆垛区（纸箱 + 集装箱）；
+     20 台 AGV @1.0—1.5m/s；无人叉车；无人机送急件
      ——《逐词大白话解析》仿真平台段
    · 4 个分布式接入点（pRRU）；智能超表面 12—16 块；
      每块 0.6m×0.6m、256 单元、1-bit 相位（PIN）
@@ -14,7 +14,7 @@
    · 五步管线：建图→传播计算→遮挡预测→相位决策→执行补盲
      （孪生 50ms 周期，预测提前 300—500ms，慢环 1Hz / 快环 20Hz）
    ========================================================= */
-const SCENE={L:60,D:40,H:8};
+const SCENE={L:120,D:60,H:8};
 
 const MAT={
   steel:    {name:'钢结构',    rho:0.92, loss:28, color:0xA39C90, edge:0x6F685D},
@@ -25,33 +25,33 @@ const MAT={
   container:{name:'集装箱',    rho:0.90, loss:30, color:0xADA79B, edge:0x756E63}
 };
 
+const RIS_N=16;   // 部署 16 块（文档 12—16 块，取上限）
 const STATE={agvCount:20, speed:1.2, forklifts:2, shadow:100,
-             ris:12, risOn:true, showBeam:true, bs:4, predWin:400, predOn:true,
+             ris:16, risOn:true, showBeam:true, bs:4, predWin:400, predOn:true,
              sensing:true, slicing:'dynamic', showMat:true};
 const PRESETS={
   baseline:{agvCount:20,speed:1.2,forklifts:2,shadow:100,ris:0, bs:4,predWin:400,predOn:false,sensing:false,slicing:'cloud'},
-  optimal :{agvCount:20,speed:1.2,forklifts:2,shadow:100,ris:12,bs:4,predWin:400,predOn:true, sensing:true, slicing:'dynamic'}
+  optimal :{agvCount:20,speed:1.2,forklifts:2,shadow:100,ris:16,bs:4,predWin:400,predOn:true, sensing:true, slicing:'dynamic'}
 };
 
 /* ---------- 静态场景（米） ---------- */
 const RACKS=[];
-[3.0,7.0,14.0,18.0].forEach(z=>{ [4,18,32].forEach(x=> RACKS.push({x,z,w:12,d:1.2})); });
+[8,14,20,26,34,40,46,52].forEach(z=>{ [12,46,80].forEach(x=> RACKS.push({x,z,w:12,d:1.2})); });
 const COLUMNS=[];
-[17,31].forEach(x=>{ [5.6,9.6,20.2].forEach(z=> COLUMNS.push({x,z,r:0.45})); });
-const ARMS=[{x:10,z:29.5},{x:18.5,z:29.5},{x:27,z:29.5},{x:35.5,z:29.5}];
+[5.5,30,64,98,116].forEach(x=>{ [5.5,17,31.5,43,56].forEach(z=> COLUMNS.push({x,z,r:0.45})); });
+const ARMS=Array.from({length:12},(_,i)=>({x:9+i*9.4,z:57.2}));
 const STACKS=[
-  {type:'carton',    x:45, z:25.0, w:5.0,  d:3.6},
-  {type:'container', x:45, z:30.2, w:10.5, d:2.4}
+  {type:'carton',    x:100, z:5.5, w:6.0,  d:4.0},
+  {type:'container', x:100, z:11.5,w:12.0, d:3.0}
 ];
-const BS_POOL=[{x:3,z:2.5},{x:57,z:2.5},{x:3,z:37.5},{x:57,z:37.5},{x:30,z:12.0},{x:30,z:37.8}];
+const BS_POOL=[{x:5,z:5},{x:115,z:5},{x:5,z:55},{x:115,z:55},{x:60,z:33},{x:60,z:5}];
 const RIS_POOL=[
-  {x:10,z:8.9},{x:24,z:8.9},{x:38,z:8.9},
-  {x:10,z:12.6},{x:24,z:12.6},{x:38,z:12.6},
-  {x:10,z:16.8},{x:24,z:16.8},{x:38,z:16.8},
-  {x:45.6,z:27.0},{x:45.6,z:32.0},
-  {x:17,z:5.6},{x:31,z:5.6},
-  {x:17,z:20.2},{x:31,z:20.2},
-  {x:55,z:21.0}
+  {x:30,z:11},{x:64,z:11},{x:98,z:11},
+  {x:30,z:17},{x:64,z:17},{x:98,z:17},
+  {x:30,z:23},{x:64,z:23},{x:98,z:23},
+  {x:30,z:31.5},{x:64,z:31.5},{x:98,z:31.5},
+  {x:30,z:49},{x:64,z:49},{x:98,z:49},
+  {x:5,z:30}
 ];
 const COL_SET=COLUMNS.map(c=>c.x+','+c.z);
 RIS_POOL.forEach((p,i)=>{
@@ -80,7 +80,7 @@ STATIC.forEach(o=>fillMask(S_MASK,o));
 const DYN=[];
 
 /* ---------- 运动对象 ---------- */
-const LOOP_M=[{x:2.5,z:21.5},{x:57.5,z:21.5},{x:57.5,z:38.2},{x:2.5,z:38.2}];
+const LOOP_M=[{x:3,z:3},{x:117,z:3},{x:117,z:54},{x:3,z:54}];
 const SEGS=(function(){
   const s=[]; let total=0;
   for(let i=0;i<LOOP_M.length;i++){
@@ -108,14 +108,14 @@ function buildAGVs(){
   const n=STATE.agvCount;
   for(let i=0;i<n;i++){
     AGVS.push({id:i+1, lane:(i%6===5)?'mid':'loop', s:(SEGS.total/n)*i,
-      x0:4+((i*97)%52), mdir:i%2?1:-1,
+      x0:5+((i*97)%108), mdir:i%2?1:-1,
       x:0,z:0,ang:0, rssi:-70, futLost:false, warned:false,
       halt:0, lost:false, wasLost:false, _st:''});
   }
 }
 function buildForklifts(){
   FORKLIFTS.length=0;
-  const lanesZ=[11.5,16.6,12.4,15.8];
+  const lanesZ=[11,17,23,29];
   for(let i=0;i<STATE.forklifts;i++){
     FORKLIFTS.push({id:i+1, z:lanesZ[i%4], x:6+i*7,
       dir:i%2?1:-1, ang:i%2?Math.PI:0, rssi:-70, halt:0, lost:false, wasLost:false, _st:''});
@@ -153,7 +153,7 @@ function pathLoss(x1,z1,x2,z2){
 
 /* RIS 阵列：面板 0.6m×0.6m、256 单元、1-bit 相位（文档部署清单）
    补盲增益上限取文档仿真值 +12.4dB，不做放大 */
-const RIS_R=15, RIS_MAXD=17, RIS_MAXG=8.0, RIS_CAP=12.4;
+const RIS_R=20, RIS_MAXD=26, RIS_MAXG=8.0, RIS_CAP=12.4;
 const RIS_H=3.6;   // 面板挂高 m（柱装 6m）——贴装于立柱/货架侧板/天花板
 
 function baseRSSI(x,z){
@@ -187,7 +187,7 @@ function risGain(x,z,pick){
 
 function computeRSSI(x,z){ return baseRSSI(x,z)+risGain(x,z); }
 
-/* ---------- 热力图（只算车间内部 60×40） ---------- */
+/* ---------- 热力图（只算车间内部 120×60） ---------- */
 const HC=1.5;
 const HW=Math.ceil(SCENE.L/HC), HH=Math.ceil(SCENE.D/HC);
 const HEAT=new Float32Array(HW*HH);
@@ -247,7 +247,7 @@ const KPI={blind:0,ints:0,lat:0,thr:0,succ:0,pos:0,tops:0,bom:0,recfg:0,ul:0,gai
 
 /* 优化度：三项措施的达成比例（方案态=1，5G-A 基线态=0） */
 function optDeg(){
-  const risF  = STATE.risOn? Math.min(STATE.ris/12,1) : 0;
+  const risF  = STATE.risOn? Math.min(STATE.ris/RIS_N,1) : 0;
   const predF = STATE.predOn? Math.max(0,Math.min(1,(STATE.predWin-300)/100)) : 0;
   const senseF= STATE.sensing?1:0;
   const sliceF= STATE.slicing==='dynamic'?1:0;
@@ -304,12 +304,12 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xF2EEDF);
 scene.fog=new THREE.Fog(0xF2EEDF,150,320);
 const camera=new THREE.PerspectiveCamera(48,1,0.1,600);
-camera.position.set(38,40,62);
+camera.position.set(78,58,120);
 const controls=new THREE.OrbitControls(camera,renderer.domElement);
-controls.target.set(30,0,19);
+controls.target.set(60,0,30);
 controls.enableDamping=true; controls.dampingFactor=0.08;
 controls.maxPolarAngle=Math.PI/2-0.05;
-controls.minDistance=10; controls.maxDistance=170;
+controls.minDistance=12; controls.maxDistance=320;
 
 function resize(){
   const r=cv.parentElement.getBoundingClientRect();
@@ -363,8 +363,8 @@ heatPlane.rotation.x=-Math.PI/2; heatPlane.position.set(SCENE.L/2,0.06,SCENE.D/2
   const g=new THREE.Group();
   const mat=new THREE.LineBasicMaterial({color:0xC0A469,transparent:true,opacity:0.16});
   const pts=[];
-  for(let m=0;m<=SCENE.L;m+=5){ pts.push(m,0,0, m,0,SCENE.D); }
-  for(let m=0;m<=SCENE.D;m+=5){ pts.push(0,0,m, SCENE.L,0,m); }
+  for(let m=0;m<=SCENE.L;m+=10){ pts.push(m,0,0, m,0,SCENE.D); }
+  for(let m=0;m<=SCENE.D;m+=10){ pts.push(0,0,m, SCENE.L,0,m); }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
   g.add(new THREE.LineSegments(geo,mat));
@@ -428,7 +428,7 @@ function makeLabel(text,opts){
   return sp;
 }
 
-/* ---- 货架（12 组） ---- */
+/* ---- 货架（8 排 × 3 组） ---- */
 RACKS.forEach((r,ri)=>{
   const g=new THREE.Group();
   const upM=std(MAT.rack.edge,0.6,0.5);
@@ -486,7 +486,7 @@ STACKS.forEach(s=>{
   scene.add(g);
 });
 
-/* ---- 协作机械臂（4 台，实时摆动） ---- */
+/* ---- 协作机械臂（12 台，实时摆动） ---- */
 const armJoints=[];
 ARMS.forEach((a,i)=>{
   const g=new THREE.Group();
@@ -669,7 +669,7 @@ function makeDrone(){
   });
   const led=new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8),new THREE.MeshBasicMaterial({color:GOLD}));
   led.position.y=-0.2; g.add(led);
-  g.position.set(6,5,21.5);
+  g.position.set(6,5,30);
   scene.add(g);
   return {g,rotors,led};
 }
@@ -709,8 +709,8 @@ function futurePos(a,ms){
   const dd=STATE.speed*ms/1000;
   if(a.lane==='loop') return loopPoint(a.s+dd);
   let x0=a.x0+a.mdir*dd;
-  if(x0>56){x0=56;} if(x0<4){x0=4;}
-  return {x:x0,z:21.5};
+  if(x0>115){x0=115;} if(x0<5){x0=5;}
+  return {x:x0,z:30};
 }
 
 function update(dt){
@@ -725,9 +725,9 @@ function update(dt){
       const p=loopPoint(a.s); a.x=p.x; a.z=p.z; a.ang=p.ang;
     }else{
       a.x0+=a.mdir*dt*STATE.speed;
-      if(a.x0>56){a.x0=56;a.mdir=-1}
-      if(a.x0<4){a.x0=4;a.mdir=1}
-      a.x=a.x0; a.z=21.5; a.ang=a.mdir>0?0:Math.PI;
+      if(a.x0>115){a.x0=115;a.mdir=-1}
+      if(a.x0<5){a.x0=5;a.mdir=1}
+      a.x=a.x0; a.z=30; a.ang=a.mdir>0?0:Math.PI;
     }
     a.rssi=computeRSSI(a.x,a.z);
     a.lost=a.rssi<THRESH;
@@ -869,9 +869,9 @@ function render3D(){
   matTags.visible=STATE.showMat;
 
   // 无人机沿横穿道巡航
-  const dx=6+((T*1.6)%48);
-  const dback=Math.floor((T*1.6)/48)%2;
-  drone.g.position.set(dback?54-dx+6:dx,5,21.5);
+  const dx=8+((T*2.2)%104);
+  const dback=Math.floor((T*2.2)/104)%2;
+  drone.g.position.set(dback?112-dx+8:dx,6,30);
   drone.g.rotation.y=dback?Math.PI:0;
   drone.rotors.forEach(r=>r.rotation.y+=0.6);
 
@@ -932,7 +932,7 @@ function render3D(){
    ========================================================= */
 const SLIDERS=[
   {k:'agvCount', label:'AGV 数量',       min:4, max:24, step:1,  unit:'台', fmt:v=>v},
-  {k:'speed',    label:'行驶速度',       min:0.4,max:2.0,step:0.1,unit:'m/s',fmt:v=>v.toFixed(1)},
+  {k:'speed',    label:'行驶速度',       min:1.0,max:1.5,step:0.1,unit:'m/s',fmt:v=>v.toFixed(1)},
   {k:'forklifts',label:'无人叉车',       min:0, max:4,  step:1,  unit:'台', fmt:v=>v},
   {k:'shadow',   label:'金属遮挡强度',   min:40,max:130,step:5,  unit:'%',  fmt:v=>v},
   {k:'ris',      label:'RIS 智能反射面', min:0, max:16, step:1,  unit:'块', fmt:v=>v},
@@ -1045,7 +1045,7 @@ document.getElementById('kpis').innerHTML=KPI_DEF.map(x=>`
 
 /* 是否处于方案态：四项措施全开（RIS 12 块 + 预测 + 通感 + 动态三级） */
 function isScheme(){
-  return !!(STATE.risOn && STATE.ris>=12 && STATE.predOn && STATE.predWin>=300
+  return !!(STATE.risOn && STATE.ris>=RIS_N && STATE.predOn && STATE.predWin>=300
             && STATE.sensing && STATE.slicing==='dynamic');
 }
 
